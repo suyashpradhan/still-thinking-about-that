@@ -4,7 +4,7 @@ export function Wordmark() {
   return (
     <div className="cc-chrome cc-wordmark">
       <span className="dot" />
-      <span className="gm">Cringe Cemetery</span>
+      <span className="gm">Still Thinking About That?</span>
     </div>
   );
 }

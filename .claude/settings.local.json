@@ -5,7 +5,9 @@
       "Bash(npm run *)",
       "Read(//tmp/**)",
       "Bash(pkill -f \"vite\")",
-      "mcp__Claude_Preview__preview_start"
+      "mcp__Claude_Preview__preview_start",
+      "Bash(rm -rf node_modules package-lock.json)",
+      "Bash(npm install *)"
     ]
   }
 }
