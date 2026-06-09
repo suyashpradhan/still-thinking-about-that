@@ -19,8 +19,8 @@ export function MuteToggle() {
       aria-label={muted ? 'Unmute' : 'Mute'}
       style={{
         position: 'fixed',
-        top: 16,
-        right: 16,
+        top: 'calc(16px + env(safe-area-inset-top))',
+        right: 'calc(16px + env(safe-area-inset-right))',
         zIndex: 90,
         width: 44,
         height: 44,

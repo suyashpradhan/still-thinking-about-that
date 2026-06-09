@@ -36,7 +36,19 @@ interface UseRitualResult {
   relief: string;
   wink: string;
   saveImage: (aspect: ShareAspect) => Promise<void>;
+  shareImage: (aspect: ShareAspect) => Promise<void>;
+  canShare: boolean;
 }
+
+// Native file-share support (iOS Safari, Android Chrome). Lets the user push the
+// PNG straight into Instagram Stories / X / Messages without a manual download.
+const canShareFiles = (): boolean => {
+  try {
+    return typeof navigator !== 'undefined' && !!navigator.canShare && !!navigator.share;
+  } catch {
+    return false;
+  }
+};
 
 /**
  * Owns the canvas ritual lifecycle: builds the renderer once on mount, plays it,
@@ -71,17 +83,15 @@ export function useRitual(text: string, style: ReleaseStyle): UseRitualResult {
       ritualRef.current = r;
       const colors = paletteColors();
       if (colors) r.configure({ colors });
+      // Reduced motion (incl. iOS Low Power Mode, which forces it) still gets the
+      // hero release — just a calmer one. Previously the whole flight was skipped
+      // and the animation never appeared on those devices.
+      r.setCalm(prefersReducedMotion());
       r.setScene({ memory: text, relief, style });
       const rect = wrapRef.current.getBoundingClientRect();
       r.layout(rect.width, rect.height);
       r.prepare();
       audio.startWind();
-      if (prefersReducedMotion()) {
-        r.drawFinal();
-        setPhase('relief');
-        audio.play('relief');
-        return;
-      }
       r.play({
         onPhase: (name) => {
           if (!alive) return;
@@ -102,6 +112,15 @@ export function useRitual(text: string, style: ReleaseStyle): UseRitualResult {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const downloadBlob = (blob: Blob, aspect: ShareAspect) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `cringe-cemetery-${aspect}.png`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+  };
+
   const saveImage = async (aspect: ShareAspect) => {
     const r = ritualRef.current;
     if (!r) return;
@@ -109,12 +128,7 @@ export function useRitual(text: string, style: ReleaseStyle): UseRitualResult {
     setBusy('Saving…');
     try {
       const blob = await r.exportStill(aspect);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `cringe-cemetery-${aspect}.png`;
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 4000);
+      downloadBlob(blob, aspect);
       setBusy('Saved ✓');
     } catch {
       setBusy('Couldn’t save');
@@ -122,5 +136,33 @@ export function useRitual(text: string, style: ReleaseStyle): UseRitualResult {
     setTimeout(() => setBusy(null), 1400);
   };
 
-  return { wrapRef, canvasRef, phase, busy, relief, wink, saveImage };
+  // Open the OS share sheet with the rendered PNG; fall back to a download if
+  // the device/file-share isn't available.
+  const shareImage = async (aspect: ShareAspect) => {
+    const r = ritualRef.current;
+    if (!r) return;
+    audio.play('tick');
+    setBusy('Preparing…');
+    try {
+      const blob = await r.exportStill(aspect);
+      const file = new File([blob], `still-thinking-about-that.png`, { type: 'image/png' });
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], text: 'Still thinking about that? Not anymore.' });
+        setBusy(null);
+        return;
+      }
+      downloadBlob(blob, aspect);
+      setBusy('Saved ✓');
+    } catch (err) {
+      // User dismissing the share sheet is not an error.
+      if (err instanceof Error && err.name === 'AbortError') {
+        setBusy(null);
+        return;
+      }
+      setBusy('Couldn’t share');
+    }
+    setTimeout(() => setBusy(null), 1400);
+  };
+
+  return { wrapRef, canvasRef, phase, busy, relief, wink, saveImage, shareImage, canShare: canShareFiles() };
 }

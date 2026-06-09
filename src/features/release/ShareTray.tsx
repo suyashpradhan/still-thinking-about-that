@@ -8,6 +8,8 @@ interface ShareTrayProps {
   busy: string | null;
   wink: string;
   onSave: (aspect: ShareAspect) => void;
+  onShare: (aspect: ShareAspect) => void;
+  canShare: boolean;
   onRestart: () => void;
 }
 
@@ -18,7 +20,10 @@ const FORMATS: Array<{ label: string; aspect: ShareAspect; hero: boolean }> = [
 ];
 
 /** The share tray — fades up as the scene settles into relief. */
-export function ShareTray({ busy, wink, onSave, onRestart }: ShareTrayProps) {
+export function ShareTray({ busy, wink, onSave, onShare, canShare, onRestart }: ShareTrayProps) {
+  // On phones, opening the native share sheet beats a silent download — it routes
+  // straight to Stories / X / Messages. Desktop keeps the download.
+  const take = canShare ? onShare : onSave;
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
@@ -30,7 +35,7 @@ export function ShareTray({ busy, wink, onSave, onRestart }: ShareTrayProps) {
         right: 0,
         bottom: 0,
         zIndex: 8,
-        padding: '60px 22px 30px',
+        padding: '60px 22px calc(30px + env(safe-area-inset-bottom))',
         background: 'linear-gradient(to top, rgba(8,12,28,.82) 30%, rgba(8,12,28,.45) 70%, transparent)',
       }}
     >
@@ -58,7 +63,7 @@ export function ShareTray({ busy, wink, onSave, onRestart }: ShareTrayProps) {
         {FORMATS.map(({ label, aspect, hero }) => (
           <button
             key={label}
-            onClick={() => onSave(aspect)}
+            onClick={() => take(aspect)}
             disabled={!!busy}
             style={{
               flex: '0 0 auto',

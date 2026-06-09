@@ -8,10 +8,22 @@ interface MoonProps {
 }
 
 export function Moon({ size = 120, x = '50%', y = 70, bright = false }: MoonProps) {
+  const halo = size * (bright ? 4.6 : 3.6);
   return (
     <div
       className="cc-moondrift"
-      style={{ position: 'absolute', left: x, top: y, transform: 'translateX(-50%)', pointerEvents: 'none' }}
+      style={{
+        position: 'absolute',
+        left: x,
+        top: y,
+        // Pin the wrapper to the moon's exact square footprint. Without an
+        // intrinsic size here, iOS Safari can hand the inline <svg> a percentage
+        // size and stretch it into an ellipse.
+        width: size,
+        height: size,
+        transform: 'translateX(-50%)',
+        pointerEvents: 'none',
+      }}
     >
       <div
         className="cc-moonbreath"
@@ -19,15 +31,29 @@ export function Moon({ size = 120, x = '50%', y = 70, bright = false }: MoonProp
           position: 'absolute',
           left: '50%',
           top: '50%',
-          width: size * (bright ? 4.6 : 3.6),
-          height: size * (bright ? 4.6 : 3.6),
+          width: halo,
+          height: halo,
           transform: 'translate(-50%,-50%)',
           borderRadius: '50%',
           background: 'radial-gradient(circle, var(--glow-soft) 0%, rgba(255,255,255,0) 64%)',
           transition: 'width .9s ease, height .9s ease',
         }}
       />
-      <svg width={size} height={size} viewBox="0 0 100 100" style={{ position: 'relative', display: 'block' }}>
+      <svg
+        width={size}
+        height={size}
+        viewBox="0 0 100 100"
+        preserveAspectRatio="xMidYMid meet"
+        style={{
+          position: 'relative',
+          display: 'block',
+          // Belt-and-suspenders against mobile layout engines resizing the SVG:
+          // lock CSS box to a square and keep it from being flex-shrunk.
+          width: size,
+          height: size,
+          flexShrink: 0,
+        }}
+      >
         <defs>
           <radialGradient id="ccMoonG" cx="40%" cy="36%" r="74%">
             <stop offset="0%" stopColor="#fffdf6" />

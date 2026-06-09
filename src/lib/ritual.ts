@@ -126,6 +126,11 @@ export class CCRitual {
   private _phaseSent: Record<string, number> = {};
   private _timers: ReturnType<typeof setTimeout>[] = [];
   private _brand = false;
+  // Calm mode: a gentler version of the same release for users who prefer
+  // reduced motion (and for iOS Low Power Mode, which forces that preference).
+  // The words still gather, lift and float away — we only soften the jitter and
+  // high-frequency twinkle so nothing flickers.
+  private _calm = false;
   // timeline (seconds)
   private TL = { assemble: 0.5, anticipate: 0.95, flight: 1.35, spread: 0.55, textIn: 3.35, end: 4.7 };
 
@@ -140,6 +145,12 @@ export class CCRitual {
   configure({ colors, fonts }: { colors?: Partial<RitualColors>; fonts?: Partial<RitualFonts> } = {}): this {
     if (colors) Object.assign(this.colors, colors);
     if (fonts) Object.assign(this.fonts, fonts);
+    return this;
+  }
+
+  /** Toggle the gentler reduced-motion variant. Same timeline, less jitter. */
+  setCalm(v: boolean): this {
+    this._calm = v;
     return this;
   }
 
@@ -268,6 +279,9 @@ export class CCRitual {
 
   // ── particle state at absolute time t ────────────────────────
   private _pstate(p: Particle, t: number): ParticleState {
+    // In calm mode the particles still gather, lift and drift away — we just
+    // scale down the per-particle wobble and kill the fast flicker.
+    const jit = this._calm ? 0.25 : 1;
     const fStart = this.TL.flight + p.dly;
     // assemble: converge from a small scatter to origin over [0, assemble]
     if (t < this.TL.assemble) {
@@ -277,22 +291,23 @@ export class CCRitual {
     // hold + anticipation: gentle shimmer, a small inhale (pull up) near the end
     if (t < fStart) {
       const ant = clamp01((t - this.TL.anticipate) / (this.TL.flight - this.TL.anticipate));
-      const jx = Math.sin(t * 2.0 + p.ph) * 0.8;
-      const jy = Math.cos(t * 2.2 + p.ph) * 0.8 - easeInOut(ant) * 6 * (p.mode === 'fog' ? -0.4 : 1);
+      const jx = Math.sin(t * 2.0 + p.ph) * 0.8 * jit;
+      const jy = Math.cos(t * 2.2 + p.ph) * 0.8 * jit - easeInOut(ant) * 6 * (p.mode === 'fog' ? -0.4 : 1);
       return { x: p.ox + jx, y: p.oy + jy, a: 1, sz: p.size * (1 + ant * 0.15), warm: p.warm };
     }
     // flight: closed-form drift
     const tau = t - fStart;
     const k = clamp01(tau / p.life);
     const e = easeOut(k);
-    const sway = Math.sin(tau * 1.6 + p.ph) * p.sway;
+    const sway = Math.sin(tau * 1.6 + p.ph) * p.sway * jit;
     const x = p.ox + p.vx * tau * (p.mode === 'stars' ? 0.5 : 0.8) + sway * (1 - k * 0.3);
     const y = p.oy - p.vy * tau * (0.7 + 0.3 * e);
     let sz: number;
     let a: number;
     if (p.mode === 'stars') {
       sz = p.size * (1 - 0.78 * e);
-      a = (1 - k) * (0.55 + 0.4 * Math.sin(t * 9 + p.ph));
+      // steady fade in calm mode; a soft twinkle otherwise
+      a = (1 - k) * (this._calm ? 0.8 : 0.55 + 0.4 * Math.sin(t * 9 + p.ph));
     } else if (p.mode === 'fog') {
       sz = p.size * (1 + 1.6 * e);
       a = (1 - k) * 0.7;
