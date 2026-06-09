@@ -1,0 +1,382 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ════════════════════════════════════════════════════════════════
+   Cringe Cemetery — global styles
+   Ported verbatim from the prototype host so the visual direction,
+   palettes and animations are preserved exactly. Components rely on
+   these class names and CSS variables.
+   ════════════════════════════════════════════════════════════════ */
+
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+body {
+  min-height: 100vh;
+  background: #11182c;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Satoshi', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+#root {
+  width: 100%;
+}
+textarea::placeholder {
+  color: transparent;
+}
+
+/* ── palettes (lighter, airier night by default) ───────────── */
+.cc-stage {
+  --sky-top: #202a49;
+  --sky-mid: #324269;
+  --sky-low: #516695;
+  --glow: #f4e3bd;
+  --glow-soft: rgba(244, 227, 189, 0.42);
+  --bone: #f4f2ec;
+  --bone-dim: #d7dbe8;
+  --muted: #aeb6d0;
+  --faint: #828bab;
+  --accent: #f3deb0;
+  --accent-deep: #d8bd83;
+  --line: rgba(255, 255, 255, 0.12);
+  --sky: radial-gradient(150% 95% at 50% 8%, var(--sky-low) 0%, var(--sky-mid) 42%, var(--sky-top) 100%);
+  --portal-shadow: 0 40px 110px -24px rgba(8, 12, 28, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.07),
+    0 0 80px -16px rgba(120, 150, 220, 0.28);
+}
+.cc-stage[data-palette='indigo'] {
+  --sky-top: #0a0715;
+  --sky-mid: #140f22;
+  --sky-low: #241a3a;
+  --glow: #f3c969;
+  --glow-soft: rgba(243, 201, 105, 0.32);
+  --bone: #ece6d6;
+  --bone-dim: #c4bcd0;
+  --muted: #9a8fb0;
+  --faint: #6f6588;
+  --accent: #f3c969;
+  --accent-deep: #cda94f;
+  --sky: radial-gradient(150% 95% at 50% 6%, var(--sky-low) 0%, var(--sky-mid) 46%, var(--sky-top) 100%);
+}
+.cc-stage[data-palette='predawn'] {
+  --sky-top: #2a2747;
+  --sky-mid: #494468;
+  --sky-low: #8a7596;
+  --glow: #ffe6c4;
+  --glow-soft: rgba(255, 213, 170, 0.4);
+  --bone: #f7f3ec;
+  --bone-dim: #e3dbe0;
+  --muted: #c0b3c4;
+  --faint: #9385a0;
+  --accent: #ffd9ad;
+  --accent-deep: #e7b483;
+  --sky: radial-gradient(160% 100% at 50% 100%, var(--sky-low) 0%, var(--sky-mid) 40%, var(--sky-top) 100%);
+}
+
+/* ── outer page backdrop ───────────────────────────────────── */
+.cc-webbg {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+  background: #0c1124;
+}
+.cc-webbg .halo {
+  position: absolute;
+  left: 50%;
+  top: -26%;
+  width: 130vw;
+  height: 96vh;
+  transform: translateX(-50%);
+  background: radial-gradient(ellipse at 50% 40%, rgba(150, 180, 240, 0.12) 0%, rgba(90, 120, 190, 0.06) 38%, transparent 66%);
+}
+.cc-webbg .vign {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(135% 95% at 50% 28%, transparent 44%, rgba(6, 9, 22, 0.66) 100%);
+}
+
+/* ── the portal: a quiet portrait window into the night ────── */
+.cc-frame {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  min-height: 100vh;
+  justify-content: center;
+  padding: 22px 16px;
+}
+.cc-portal {
+  position: relative;
+  width: min(430px, 96vw);
+  height: min(900px, 90vh);
+  border-radius: 44px;
+  overflow: hidden;
+  box-shadow: var(--portal-shadow);
+}
+.cc-chrome {
+  position: fixed;
+  z-index: 80;
+  font-family: 'Satoshi', sans-serif;
+}
+.cc-wordmark {
+  left: 28px;
+  top: 24px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #dfe3f0;
+  opacity: 0.9;
+}
+.cc-wordmark .gm {
+  font-family: 'Instrument Serif', serif;
+  font-size: 21px;
+  letter-spacing: 0.2px;
+}
+.cc-wordmark .dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 34%, #fffdf6, #f3deb0);
+  box-shadow: 0 0 12px 2px rgba(244, 227, 189, 0.5);
+}
+@media (max-width: 560px) {
+  .cc-frame {
+    padding: 0;
+  }
+  .cc-portal {
+    width: 100vw;
+    height: 100vh;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .cc-wordmark {
+    display: none;
+  }
+}
+
+/* ── gentle entrance (transform-only: never hides content) ──── */
+@keyframes ccRise {
+  from {
+    transform: translateY(16px);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+.cc-rise {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .cc-rise {
+    animation: ccRise 0.7s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+  }
+}
+
+/* ── stars ─────────────────────────────────────────────────── */
+@keyframes ccTwinkle {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.cc-twinkle {
+  animation: ccTwinkle 3.4s ease-in-out infinite;
+}
+
+/* ── fog drift ─────────────────────────────────────────────── */
+@keyframes ccFog {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(22%);
+  }
+}
+.cc-fog {
+  animation: ccFog linear infinite alternate;
+}
+
+/* ── fireflies ─────────────────────────────────────────────── */
+@keyframes ccFirefly {
+  0% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  50% {
+    transform: translate(var(--dx), var(--dy));
+    opacity: 0.85;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+}
+.cc-firefly {
+  animation: ccFirefly ease-in-out infinite;
+}
+
+/* ── moon: slow drift + soft breathing glow ────────────────── */
+@keyframes ccMoonDrift {
+  0% {
+    transform: translate(-50%, 0);
+  }
+  50% {
+    transform: translate(-50%, 8px);
+  }
+  100% {
+    transform: translate(-50%, 0);
+  }
+}
+@keyframes ccMoonBreath {
+  0%,
+  100% {
+    opacity: 0.85;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.cc-moondrift {
+  animation: ccMoonDrift 30s ease-in-out infinite;
+}
+.cc-moonbreath {
+  animation: ccMoonBreath 8s ease-in-out infinite;
+}
+
+/* ── the hero release: words carried off ───────────────────── */
+@keyframes ccFly {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) rotate(0deg) scale(1);
+    filter: blur(0);
+  }
+  14% {
+    opacity: 1;
+    transform: translate(0, -4px) rotate(0deg) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--tx, 0px), var(--ty, -220px)) rotate(var(--rot, 0deg)) scale(var(--scl, 1));
+    filter: blur(var(--blur, 3px));
+  }
+}
+.cc-fly {
+  animation: ccFly var(--dur, 2.6s) cubic-bezier(0.32, 0.36, 0.2, 1) forwards;
+  animation-delay: var(--dly, 0s);
+  will-change: transform, opacity;
+}
+
+/* a rising ember/mote on the wind */
+@keyframes ccMote {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.6);
+  }
+  25% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--mx, 0px), var(--my, -260px)) scale(1);
+  }
+}
+.cc-mote {
+  animation: ccMote var(--mdur, 2.8s) ease-out forwards;
+  animation-delay: var(--mdly, 0s);
+}
+
+/* relief line settle (transform-only) */
+@keyframes ccRelief {
+  from {
+    transform: translateY(12px);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+.cc-relief {
+  opacity: 1;
+  animation: ccRelief 1s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+/* moon flares softly at the moment of release */
+@keyframes ccFlare {
+  0% {
+    opacity: 0;
+  }
+  40% {
+    opacity: 0.7;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.cc-flare {
+  animation: ccFlare 2.2s ease-out forwards;
+}
+
+/* button breathing glow */
+@keyframes ccBtnGlow {
+  0%,
+  100% {
+    box-shadow: 0 10px 30px rgba(150, 170, 230, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  }
+  50% {
+    box-shadow: 0 12px 42px rgba(170, 190, 250, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  }
+}
+.cc-btnglow {
+  animation: ccBtnGlow 3.6s ease-in-out infinite;
+}
+
+/* soft pulse on the input focus ring */
+@keyframes ccCaret {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cc-twinkle,
+  .cc-fog,
+  .cc-firefly,
+  .cc-moondrift,
+  .cc-moonbreath,
+  .cc-btnglow {
+    animation: none !important;
+  }
+}
+
+/* hide scrollbars inside the portal but keep scrollability */
+.cc-noscroll::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+.cc-noscroll {
+  scrollbar-width: none;
+}

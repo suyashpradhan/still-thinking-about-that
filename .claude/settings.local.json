@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(unzip -o \"/Users/suyash.pradhan/Downloads/Cringe Crementry \\(2\\).zip\" -d ./prototype_src)",
+      "Bash(npm run *)",
+      "Read(//tmp/**)",
+      "Bash(pkill -f \"vite\")",
+      "mcp__Claude_Preview__preview_start"
+    ]
+  }
+}
