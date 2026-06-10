@@ -13,24 +13,7 @@ interface ShareTrayProps {
   onRestart: () => void;
 }
 
-const FORMATS: Array<{ label: string; aspect: ShareAspect; hero: boolean }> = [
-  { label: "Image", aspect: "post", hero: true },
-  { label: "Story", aspect: "story", hero: false },
-  { label: "X post", aspect: "x", hero: false },
-];
-
-/** The share tray — fades up as the scene settles into relief. */
-export function ShareTray({
-  busy,
-  wink,
-  onSave,
-  onShare,
-  canShare,
-  onRestart,
-}: ShareTrayProps) {
-  // On phones, opening the native share sheet beats a silent download — it routes
-  // straight to Stories / X / Messages. Desktop keeps the download.
-  const take = canShare ? onShare : onSave;
+export function ShareTray({ busy, wink, onRestart }: ShareTrayProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
