@@ -1,12 +1,3 @@
-// ritual.ts — the canvas ritual.
-// One renderer draws the whole scene (sky, stars, moon, fog) and turns the
-// memory text into a field of glowing particles that are carried off. Motion is
-// CLOSED-FORM (position is a pure function of time), so the same frames power
-// the live animation and the still export. No asset files.
-//
-// Ported from the prototype's ritual-fx.js. The unused GIF/video exporters were
-// dropped — the shipped UI only offers still-image export via `exportStill`.
-
 import type { ReleaseStyle, ShareAspect } from "../types";
 
 const easeOut = (x: number): number => 1 - Math.pow(1 - x, 3);
@@ -205,11 +196,19 @@ export class CCRitual {
   }
 
   private _sampleText(): void {
-    const W = this.baseW;
-    const H = this.baseH;
+    // Round to integers: getBoundingClientRect() can hand us fractional CSS
+    // pixels (common on high-DPR Android with dvh viewports). A fractional W
+    // would desync the flat pixel-index stride below from the real bitmap.
+    const W = Math.round(this.baseW);
+    const H = Math.round(this.baseH);
     const oc = document.createElement("canvas");
     oc.width = W;
     oc.height = H;
+    // `willReadFrequently` keeps this canvas CPU-backed. Without it, Android
+    // Chrome GPU-accelerates the offscreen canvas and getImageData() below can
+    // read back all-zero pixels (the draw isn't synced to CPU before the read),
+    // so NO particles get sampled and the memory never dissolves into stars.
+    // iOS Safari / desktop Chrome sync correctly, which is why they worked.
     const o = oc.getContext("2d", { willReadFrequently: true })!;
     // draw the memory the same way it reads on screen: italic serif, wrapped, centered
     let size = 27;
@@ -245,6 +244,57 @@ export class CCRitual {
     const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
     const parts: Particle[] = [];
     const windDir = rnd() > 0.5 ? 1 : -1;
+
+    // Build one particle (origin + per-style motion). Shared by the pixel-sampled
+    // path and the synthesized fallback path below.
+    const mk = (
+      ox: number,
+      oy: number,
+      r: number,
+      r2: number,
+      r3: number,
+    ): Particle => {
+      const dx = ox / W - 0.5;
+      const base = {
+        ox,
+        oy,
+        seed: r3,
+        warm: r3 > 0.16,
+        size: 0.7 + r * 1.0,
+        scat: 6 + r2 * 16,
+        ph: r3 * 6.28,
+      };
+      if (this.style === "stars")
+        return {
+          ...base,
+          dly: r * this.TL.spread,
+          vy: 150 + r2 * 150,
+          vx: (r - 0.5) * 60,
+          sway: 8 + r * 14,
+          life: 1.9 + r * 0.5,
+          mode: "stars",
+        };
+      if (this.style === "fog")
+        return {
+          ...base,
+          dly: r * this.TL.spread,
+          vy: -(90 + r2 * 90),
+          vx: (r - 0.5) * 50,
+          sway: 10 + r * 16,
+          life: 1.7 + r * 0.5,
+          mode: "fog",
+        };
+      return {
+        ...base,
+        dly: clamp01(ox / W + r * 0.4) * this.TL.spread,
+        vy: 88 + r2 * 82,
+        vx: windDir * (14 + r * 52) + dx * 18,
+        sway: 8 + r * 14,
+        life: 1.95 + r * 0.55,
+        mode: "wind",
+      };
+    };
+
     for (let y = 0; y < H; y += step) {
       for (let x = 0; x < W; x += step) {
         const a = img[(y * W + x) * 4 + 3];
@@ -252,50 +302,29 @@ export class CCRitual {
           const r = rnd();
           const r2 = rnd();
           const r3 = rnd();
-          const dx = x / W - 0.5;
-          const base = {
-            ox: x + (r - 0.5) * step,
-            oy: y + (r2 - 0.5) * step,
-            seed: r3,
-            warm: r3 > 0.16,
-            size: 0.7 + r * 1.0,
-            scat: 6 + r2 * 16,
-            ph: r3 * 6.28,
-          };
-          let p: Particle;
-          if (this.style === "stars") {
-            p = {
-              ...base,
-              dly: r * this.TL.spread,
-              vy: 150 + r2 * 150,
-              vx: (r - 0.5) * 60,
-              sway: 8 + r * 14,
-              life: 1.9 + r * 0.5,
-              mode: "stars",
-            };
-          } else if (this.style === "fog") {
-            p = {
-              ...base,
-              dly: r * this.TL.spread,
-              vy: -(90 + r2 * 90),
-              vx: (r - 0.5) * 50,
-              sway: 10 + r * 16,
-              life: 1.7 + r * 0.5,
-              mode: "fog",
-            };
-          } else {
-            p = {
-              ...base,
-              dly: clamp01(x / W + r * 0.4) * this.TL.spread,
-              vy: 88 + r2 * 82,
-              vx: windDir * (14 + r * 52) + dx * 18,
-              sway: 8 + r * 14,
-              life: 1.95 + r * 0.55,
-              mode: "wind",
-            };
-          }
-          parts.push(p);
+          parts.push(
+            mk(x + (r - 0.5) * step, y + (r2 - 0.5) * step, r, r2, r3),
+          );
         }
+      }
+    }
+
+    // Fallback: some mobile GPUs (notably Android Chrome) hand back an empty
+    // buffer from getImageData() on a hardware-accelerated canvas even with
+    // willReadFrequently, so the sampling above finds no text pixels and nothing
+    // would ever fly. If we came back sparse, synthesize a soft particle field
+    // across the text region so the release ALWAYS animates into stars.
+    if (parts.length < 24) {
+      const bandTop = startY - lh * 0.7;
+      const bandH = (lines.length - 1) * lh + lh * 1.4;
+      const halfW = Math.max(maxW, W * 0.4) / 2;
+      for (let i = 0; i < 440; i++) {
+        const r = rnd();
+        const r2 = rnd();
+        const r3 = rnd();
+        const ox = W / 2 + (rnd() - 0.5) * 2 * halfW;
+        const oy = bandTop + r2 * bandH;
+        parts.push(mk(ox, oy, r, r2, r3));
       }
     }
     // cap for perf

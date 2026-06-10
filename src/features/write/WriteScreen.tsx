@@ -113,7 +113,8 @@ export function WriteScreen({ text, setText, onContinue }: WriteScreenProps) {
                 maxWidth: 270,
               }}
             >
-              Write the thing that keeps replaying. Then let it float away.
+              Write the thing that keeps replaying at 2 am. Then let it float
+              away.
             </p>
           </div>
 
